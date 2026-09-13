@@ -27,8 +27,7 @@ class DjangoAccountRepository(AccountRepository):
 
     @staticmethod
     def _to_domain(row: AccountModel) -> Account:
-        # int() porque balance ainda e DecimalField no model
-        return Account(id=row.id, balance=int(row.balance))
+        return Account(id=row.id, balance=row.balance)
 
 
 class DjangoTransactionRepository(TransactionRepository):
@@ -36,8 +35,8 @@ class DjangoTransactionRepository(TransactionRepository):
         TransactionModel.objects.create(
             type=transaction.type.value,
             amount=transaction.amount,
-            origin_id=transaction.origin or "",
-            destination_id=transaction.destination or "",
+            origin_id=transaction.origin,
+            destination_id=transaction.destination,
         )
 
     def list_all(self) -> list[Transaction]:
@@ -51,7 +50,7 @@ class DjangoTransactionRepository(TransactionRepository):
     def _to_domain(row: TransactionModel) -> Transaction:
         return Transaction(
             type=TransactionType(row.type),
-            amount=int(row.amount),
-            origin=row.origin_id or None,
-            destination=row.destination_id or None,
+            amount=row.amount,
+            origin=row.origin_id,
+            destination=row.destination_id,
         )
