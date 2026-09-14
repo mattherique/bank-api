@@ -37,8 +37,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
     "app.infrastructure",
 ]
+
+REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "app.api.exception_handler.domain_exception_handler",
+    "UNAUTHENTICATED_USER": None,
+}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
