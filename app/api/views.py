@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.request import Request
@@ -31,6 +32,7 @@ class EventView(APIView):
             "destination": _account_payload(destination),
         }
     
+    @transaction.atomic
     def post(self, request: Request) -> Response:
         serializer = EventSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -61,6 +63,7 @@ class BalanceView(APIView):
 
 
 class ResetView(APIView):
+    @transaction.atomic
     def post(self, request: Request) -> HttpResponse:
         get_reset_service().reset()
         return HttpResponse("OK", content_type="text/plain")
