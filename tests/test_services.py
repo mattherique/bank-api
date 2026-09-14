@@ -7,20 +7,15 @@ from app.infrastructure.repositories.in_memory import (
     InMemoryAccountRepository,
     InMemoryTransactionRepository,
 )
-from app.infrastructure.unit_of_work.in_memory import NullUnitOfWork
 
 
 class ServiceTestCase(unittest.TestCase):
     def setUp(self):
         self.accounts = InMemoryAccountRepository()
         self.transactions = InMemoryTransactionRepository()
-        self.events = TransactionService(
-            self.accounts, self.transactions, NullUnitOfWork
-        )
+        self.events = TransactionService(self.accounts, self.transactions)
         self.balances = BalanceService(self.accounts)
-        self.resets = ResetService(
-            self.accounts, self.transactions, NullUnitOfWork
-        )
+        self.resets = ResetService(self.accounts, self.transactions)
 
 
 class DepositTest(ServiceTestCase):
