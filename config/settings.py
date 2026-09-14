@@ -38,12 +38,22 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
     "app.infrastructure",
 ]
 
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "app.api.exception_handler.domain_exception_handler",
     "UNAUTHENTICATED_USER": None,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Bank API",
+    "DESCRIPTION": "Bank API for managing accounts and transactions",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 MIDDLEWARE = [
