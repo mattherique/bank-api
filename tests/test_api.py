@@ -103,3 +103,34 @@ class PayloadValidationTest(TestCase):
 
     def test_balance_requires_the_account_id(self):
         self.assertEqual(self.client.get("/balance").status_code, 400)
+
+
+class ErrorFlowTest(TestCase):
+    def post_event(self, payload):
+        return self.client.post(
+            "/event", data=json.dumps(payload), content_type="application/json"
+        )
+
+    def balance_of(self, account_id):
+        response = self.client.get(f"/balance?account_id={account_id}")
+        return json.loads(response.content.decode())
+
+    def test_withdrawing_more_than_the_balance_leaves_it_untouched(self):
+        self.post_event({"type": "deposit", "destination": "100", "amount": 10})
+
+        response = self.post_event({"type": "withdraw", "origin": "100", "amount": 50})
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(self.balance_of("100"), 10)
+
+    def test_a_failed_transfer_leaves_both_accounts_untouched(self):
+        self.post_event({"type": "deposit", "destination": "100", "amount": 10})
+        self.post_event({"type": "deposit", "destination": "300", "amount": 5})
+
+        response = self.post_event(
+            {"type": "transfer", "origin": "100", "destination": "300", "amount": 50}
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(self.balance_of("100"), 10)
+        self.assertEqual(self.balance_of("300"), 5)
