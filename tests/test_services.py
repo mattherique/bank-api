@@ -3,10 +3,7 @@ import unittest
 from app.application.dtos import DepositDTO, TransferDTO, WithdrawDTO
 from app.application.services import BalanceService, ResetService, TransactionService
 from app.domain.exceptions import AccountNotFound
-from app.infrastructure.repositories.in_memory import (
-    InMemoryAccountRepository,
-    InMemoryTransactionRepository,
-)
+from tests.fakes import InMemoryAccountRepository, InMemoryTransactionRepository
 
 
 class ServiceTestCase(unittest.TestCase):
