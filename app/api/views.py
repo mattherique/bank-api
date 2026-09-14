@@ -27,17 +27,6 @@ def _account_payload(account: Account) -> dict[str, object]:
 
 
 class EventView(APIView):
-    @extend_schema(
-        summary="Process a banking event (deposit, withdraw, transfer)",
-        description=(
-            "deposit creates the destination account if it doesn't exist. withdraw and "
-            "transfer require the origin account to exist, otherwise they respond with 404 and "
-            "body 0. The response format follows the event type."
-        ),
-        request=EventSerializer,
-        responses={201: EVENT_RESPONSE, 404: ACCOUNT_NOT_FOUND},
-        examples=EVENT_REQUEST_EXAMPLES + EVENT_RESPONSE_EXAMPLES,
-    )
     def _deposit(self, service: TransactionService, dto: DepositDTO) -> dict[str, object]:
         account = service.deposit(dto)
         return {"destination": _account_payload(account)}
@@ -52,7 +41,18 @@ class EventView(APIView):
             "origin": _account_payload(origin),
             "destination": _account_payload(destination),
         }
-    
+
+    @extend_schema(
+        summary="Process a banking event (deposit, withdraw, transfer)",
+        description=(
+            "deposit creates the destination account if it doesn't exist. withdraw and "
+            "transfer require the origin account to exist, otherwise they respond with 404 and "
+            "body 0. The response format follows the event type."
+        ),
+        request=EventSerializer,
+        responses={201: EVENT_RESPONSE, 404: ACCOUNT_NOT_FOUND},
+        examples=EVENT_REQUEST_EXAMPLES + EVENT_RESPONSE_EXAMPLES,
+    )
     @transaction.atomic
     def post(self, request: Request) -> Response:
         serializer = EventSerializer(data=request.data)
