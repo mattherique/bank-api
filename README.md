@@ -25,15 +25,15 @@ The codebase is split into four layers. The **Dependency Rule** is enforced: dep
 
 | Layer | Contains | Depends on |
 |-------|----------|------------|
-| `domain/` | Entities (`Account`, `Transaction`), business invariants, domain exceptions, and the repository / unit-of-work **interfaces** | Nothing but the Python standard library |
+| `domain/` | Entities (`Account`, `Transaction`), business invariants, domain exceptions, and the repository **interfaces** | Nothing but the Python standard library |
 | `application/` | Use cases (`TransactionService`, `BalanceService`, `ResetService`) and the DTOs they consume | `domain/` only |
-| `infrastructure/` | Django ORM models, repository and unit-of-work **implementations**, migrations | `domain/` + Django |
+| `infrastructure/` | Django ORM models, repository **implementations**, migrations | `domain/` + Django |
 | `api/` | DRF views, serializers, OpenAPI schema, exception handler | `application/` + `domain/` + DRF |
 
 Two consequences worth pointing out:
 
 - **The domain has zero framework imports.** `app/domain/` imports only `abc`, `dataclasses` and `enum`. Business rules such as *"you cannot withdraw more than your balance"* live in `Account`, not in a view or a model, and are unit-tested without a database, an HTTP client or Django itself.
-- **Persistence is a swappable adapter.** `AccountRepository`, `TransactionRepository` and `UnitOfWork` are abstract interfaces declared in the domain. `infrastructure/` provides two implementations of each — one backed by the Django ORM, one in memory — and `app/wiring.py` acts as the composition root that picks which pair to inject. The use cases never learn which one they got.
+- **Persistence is a swappable adapter.** `AccountRepository` and `TransactionRepository` are abstract interfaces declared in the domain. `infrastructure/` provides two implementations of each — one backed by the Django ORM, one in memory — and `app/wiring.py` acts as the composition root that picks which pair to inject. The use cases never learn which one they got.
 
 ### Project structure
 
@@ -42,15 +42,13 @@ app/
 ├── domain/                  # Entities, invariants, exceptions, ports (no framework)
 │   ├── entities/            #   Account, Transaction, TransactionType
 │   ├── repositories/        #   AccountRepository, TransactionRepository (ABCs)
-│   ├── unit_of_work.py      #   UnitOfWork (ABC)
 │   └── exceptions.py
 ├── application/             # Use cases + DTOs
 │   ├── services.py
 │   └── dtos.py
-├── infrastructure/          # Adapters: Django ORM models, repositories, UoW, migrations
+├── infrastructure/          # Adapters: Django ORM models, repositories, migrations
 │   ├── models.py
-│   ├── repositories/        #   orm.py | in_memory.py
-│   └── unit_of_work/        #   orm.py | in_memory.py
+│   └── repositories/        #   orm.py | in_memory.py
 ├── api/                     # DRF views, serializers, OpenAPI schema, exception handler
 └── wiring.py                # Composition root: builds the services and injects adapters
 
@@ -144,7 +142,22 @@ The suite is layered the same way the code is:
 
 ```python
 USE_IN_MEMORY_REPOSITORIES = True   # in-memory dictionaries, no database
-USE_IN_MEMORY_REPOSITORIES = False  # Django ORM + SQLite, transactional unit of work
+USE_IN_MEMORY_REPOSITORIES = False  # Django ORM + SQLite
 ```
 
 Nothing outside `app/wiring.py` reacts to this flag — which is the practical demonstration that the persistence choice really is an outer-layer detail.
+
+---
+
+## idempotency
+
+`POST /event` is not idempotent. The endpoint moves money, so any client retry — a request that timed out, a proxy that resends, a user pressing the button twice — is processed as a second, distinct event and the account is debited or credited again. Nothing in the current design prevents that, and for a banking API it is the gap that matters most.
+
+A future version would close it with an optional `Idempotency-Key` header:
+
+- a store that **atomically** claims the key before the event runs — a table with a unique constraint on the key, or Redis — so that two simultaneous retries cannot both win the claim;
+- the response of the first request stored against the key and replayed to every retry that carries it, leaving the accounts untouched;
+- a fingerprint of the payload alongside the key, so that reusing one key for a different operation is rejected rather than silently answered with the wrong stored response;
+- `409` while the first request is still in flight, instead of racing it.
+
+The seam is already there: the use cases receive their collaborators through the constructor and `app/wiring.py` is the only place that knows which implementations they get, so the store would enter as one more injected port without the domain layer learning about it.
